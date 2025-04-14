@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ประวัติคำสั่งซื้อ</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f1f8e9;
+      margin: 0;
+      padding: 20px;
+      color: #33691e;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .orderCard {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 10px auto;
+      max-width: 800px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-left: 6px solid #aed581;
+      transition: transform 0.2s;
+      text-align: left;
+    }
+    .orderCard:hover {
+      transform: scale(1.01);
+    }
+    .timestamp {
+      color: #999;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .cancelled { color: #d32f2f; }
+    .success { color: #388e3c; }
+    @media screen and (max-width: 600px) {
+      .orderCard {
+        padding: 15px;
+        font-size: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>📚 ประวัติคำสั่งซื้อ</h2>
+  <div id="historyContainer">⏳ กำลังโหลดข้อมูล...</div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmnAy3O20xIKtj-Zd7DSPndTw5nS78HunQnWEy813jbPUu0NDdanjmyx8oUbesHMka/exec";
+
+    async function loadHistory() {
+      const container = document.getElementById("historyContainer");
+      try {
+        const res = await fetch(SCRIPT_URL + "?get=history");
+        const data = await res.json();
+        if (!data || data.length === 0) {
+          container.innerHTML = "ไม่พบประวัติคำสั่งซื้อ";
+          return;
+        }
+
+        data.sort((a, b) => {
+  const parseDate = str => {
+    const [datePart, timePart = "00:00:00"] = str.split(" ");
+    const [d, m, y] = datePart.split("/");
+    return new Date(`${y}-${m}-${d}T${timePart}`);
+  };
+  return parseDate(b.timestamp) - parseDate(a.timestamp);
+});
+
+        container.innerHTML = "";
+        data.forEach(order => {
+          const card = document.createElement("div");
+          card.className = "orderCard";
+          card.innerHTML = `
+            <div class="timestamp">🕒 ${order.timestamp}</div>
+            <div><strong>เลขที่:</strong> ${order.orderId}</div>
+            <div><strong>ชื่อ:</strong> ${order.name}</div>
+            <div><strong>โทร:</strong> ${order.phone}</div>
+            ${order.address ? `<div><strong>ที่อยู่:</strong> ${order.address}</div>` : ""}
+            <div><strong>สินค้า:</strong> ${order.items}</div>
+            <div><strong>ยอดรวม:</strong> ${order.total} บาท</div>
+            <div class="status ${order.status.includes('❌') ? 'cancelled' : 'success'}">${order.status}</div>
+            ${order.reason ? `<div><strong>เหตุผล:</strong> ${order.reason}</div>` : ""}
+          `;
+          container.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = "❌ โหลดข้อมูลไม่สำเร็จ";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadHistory);
+  </script>
+</body>
+</html>

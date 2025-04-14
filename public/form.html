@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>ฟาดฟู้ด - สั่งอาหารออนไลน์</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      background: #fff8f0;
+      color: #333;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    header {
+      background-color: #ff7043;
+      padding: 12px 20px;
+      text-align: center;
+    }
+
+    header img {
+      max-width: 220px;
+      height: auto;
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    form {
+      background: #fff;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 25px rgba(0,0,0,0.08);
+      max-width: 600px;
+      margin: auto;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+    }
+
+    input, select, textarea, button {
+      font-size: 16px !important;
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+
+    .productRow {
+      margin-top: 20px;
+      background: #fff3e0;
+      border-radius: 12px;
+      padding: 15px;
+    }
+
+    .productRow hr {
+      border: none;
+      border-top: 1px dashed #ccc;
+      margin: 15px 0;
+    }
+
+    .warning {
+      color: #d32f2f;
+      font-size: 14px;
+    }
+
+    .btn-add, .btn-submit {
+      background-color: #fb8c00;
+      color: white;
+      border: none;
+      padding: 14px;
+      margin-top: 20px;
+      font-size: 18px;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .btn-remove {
+      background-color: #e53935;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #response {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 16px;
+      color: #d32f2f;
+    }
+
+    #paymentDetails {
+      background: #ffe0b2;
+      padding: 15px;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+
+    @media (max-width: 768px) {
+      form {
+        width: 100%;
+        max-width: 100%;
+        padding: 16px;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <form id="orderForm">
+      <label>ชื่อ-นามสกุล</label>
+      <input type="text" id="name" required>
+
+      <label>เบอร์โทร</label>
+      <input type="tel" id="phone" required>
+
+      <label>ที่อยู่จัดส่ง</label>
+      <textarea id="address" rows="3" required></textarea>
+
+      <div id="productContainer"></div>
+      <button type="button" class="btn-add" onclick="addProductRow()">➕ เพิ่มรายการอาหาร</button>
+
+      <label>ยอดรวม (บาท)</label>
+      <input type="text" id="total" readonly>
+
+      <label>ช่องทางชำระเงิน</label>
+      <select id="paymentMethod" onchange="showPaymentDetails()" required>
+        <option value="">-- เลือกช่องทาง --</option>
+        <option value="โอนบัญชีกสิกร">โอนบัญชีกสิกร</option>
+        <option value="โอนบัญชีกรุงเทพ">โอนบัญชีกรุงเทพ</option>
+        <option value="โอนบัญชี SCB">โอนบัญชี SCB</option>
+        <option value="พร้อมเพย์">พร้อมเพย์</option>
+        <option value="เก็บเงินปลายทาง">เก็บเงินปลายทาง</option>
+      </select>
+
+      <div id="paymentDetails"></div>
+
+      <label>แนบสลิป</label>
+      <input type="file" id="slipImage" accept="image/*">
+formData.append("userId", userId); // ✅ ส่ง userId ไปที่ Apps Script
+
+      <button type="button" class="btn-submit" onclick="submitForm()">สั่งซื้อ</button>
+    </form>
+    <div id="response"></div>
+  </main>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcLvACn9OWvdTRmukM4vzfLUEBGZ4Nn0bCV9zTgtAHE4g-20W541aHmbJwHpn0uddD/exec";
+let productList = [];
+let userId = ""; // ✅ Global ตัวแปร userId
+
+async function initLiff() {
+  try {
+    await liff.init({ liffId: "2007253307-JMxPKL5Z" });
+    if (!liff.isLoggedIn()) {
+      liff.login();
+    } else {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+    }
+  } catch (err) {
+    console.error("❌ LINE LIFF Error:", err);
+  }
+}
+
+async function loadProducts() {
+  try {
+    const res = await fetch(SCRIPT_URL + "?get=products");
+    productList = await res.json();
+    updateAllSelects();
+  } catch (err) {
+    document.getElementById("response").innerText = "❌ โหลดสินค้าไม่สำเร็จ";
+  }
+}
+
+function updateAllSelects() {
+  const options = '<option value="">-- เลือกอาหาร --</option>' +
+    productList.map(p => `<option value="${p.name}" data-price="${p.price}" data-stock="${p.stock}">${p.name} - ${p.price}฿ (${p.stock})</option>`).join("");
+  document.querySelectorAll("select.product").forEach(sel => {
+    const selected = sel.value;
+    sel.innerHTML = options;
+    sel.value = selected;
+  });
+}
+
+function addProductRow() {
+  const container = document.getElementById("productContainer");
+  const row = document.createElement("div");
+  row.className = "productRow";
+  row.innerHTML = `
+    <label>เมนู</label>
+    <select class="product" onchange="updatePrice()" required></select>
+    <label>จำนวน</label>
+    <input type="number" class="quantity" min="1" value="1" onchange="updatePrice()">
+    <div class="warning"></div>
+    <button type="button" class="btn-remove" onclick="removeProduct(this)">ลบ</button>
+    <hr>
+  `;
+  container.appendChild(row);
+  updateAllSelects();
+  updatePrice();
+}
+
+function removeProduct(btn) {
+  btn.closest(".productRow").remove();
+  updatePrice();
+}
+
+function updatePrice() {
+  let total = 0;
+  document.querySelectorAll(".productRow").forEach(row => {
+    const select = row.querySelector("select.product");
+    const qty = parseInt(row.querySelector("input.quantity").value) || 0;
+    const price = parseFloat(select.selectedOptions[0]?.dataset.price || 0);
+    const stock = parseInt(select.selectedOptions[0]?.dataset.stock || 0);
+    const warning = row.querySelector(".warning");
+
+    if (!select.value) {
+      warning.textContent = "";
+      return;
+    }
+
+    if (qty > stock) {
+      warning.textContent = `⚠️ สินค้าเหลือ ${stock} ชิ้น`;
+    } else {
+      warning.textContent = "";
+      total += qty * price;
+    }
+  });
+  document.getElementById("total").value = total;
+}
+
+function showPaymentDetails() {
+  const method = document.getElementById("paymentMethod").value;
+  const box = document.getElementById("paymentDetails");
+  let html = "";
+
+  switch (method) {
+    case "โอนบัญชีกสิกร":
+      html = "<b>กสิกรไทย</b><br>เลขบัญชี: 123-4-56789-0 <br>ชื่อบัญชี: บริษัท น้ำพริกแซ่บเวอร์ จำกัด";
+      break;
+    case "โอนบัญชีกรุงเทพ":
+      html = "<b>กรุงเทพ</b><br>เลขบัญชี: 987-6-54321-0 <br>ชื่อบัญชี: น้ำพริกอินเตอร์";
+      break;
+    case "โอนบัญชี SCB":
+      html = "<b>ไทยพาณิชย์</b><br>เลขบัญชี: 111-2-22222-2 <br>ชื่อบัญชี: น้ำพริกแม่หญิง";
+      break;
+    case "พร้อมเพย์":
+      html = "<b>พร้อมเพย์</b><br>เลขพร้อมเพย์: 0812345678 <br>ชื่อบัญชี: นางน้ำพริก รสเด็ด<br><img src='https://i.imgur.com/YOUR_QR_IMAGE.png' width='150'>";
+      break;
+    case "เก็บเงินปลายทาง":
+      html = "<b>เก็บเงินปลายทาง</b> <br>เจ้าหน้าที่จะจัดส่งและเก็บเงินหน้างาน";
+      break;
+  }
+
+  if (method && method !== "เก็บเงินปลายทาง") {
+    html += `<p style='color:#e65100'><strong>📌 กรุณาแนบสลิปหลังชำระเงิน</strong></p>`;
+  }
+
+  box.innerHTML = html;
+  box.style.display = html ? "block" : "none";
+}
+
+async function submitForm() {
+  const submitBtn = document.querySelector(".btn-submit");
+  const responseBox = document.getElementById("response");
+  submitBtn.disabled = true;
+  responseBox.innerText = "⏳ กำลังส่งคำสั่งซื้อ...";
+
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const address = document.getElementById("address").value.trim();
+  const paymentMethod = document.getElementById("paymentMethod").value;
+  const slipFile = document.getElementById("slipImage").files[0];
+
+  let valid = true;
+
+  if (!name || !phone || !address || !paymentMethod) {
+    responseBox.innerText = "⚠️ กรุณากรอกข้อมูลให้ครบถ้วน";
+    submitBtn.disabled = false;
+    return;
+  }
+
+  const phonePattern = /^0[689]\d{8}$/;
+  if (!phonePattern.test(phone)) {
+    responseBox.innerText = "⚠️ กรุณากรอกเบอร์โทรให้ถูกต้อง (ต้องขึ้นต้นด้วย 06, 08 หรือ 09)";
+    submitBtn.disabled = false;
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("phone", phone);
+  formData.append("address", address);
+  formData.append("paymentMethod", paymentMethod);
+  formData.append("userId", userId); // ✅ เพิ่มตรงนี้ ส่ง userId ไปด้วย
+
+  const productRows = document.querySelectorAll(".productRow");
+  const selectedProducts = new Set();
+
+  if (productRows.length === 0) {
+    responseBox.innerText = "⚠️ กรุณาเพิ่มรายการอาหารอย่างน้อย 1 รายการ";
+    submitBtn.disabled = false;
+    return;
+  }
+
+  productRows.forEach(row => {
+    const select = row.querySelector("select.product");
+    const qty = parseInt(row.querySelector("input.quantity").value);
+    const stock = parseInt(select.selectedOptions[0]?.dataset.stock || 0);
+    const warning = row.querySelector(".warning");
+    const product = select.value;
+
+    if (!product || qty <= 0) {
+      warning.textContent = "⚠️ กรุณาเลือกสินค้าและใส่จำนวนให้ถูกต้อง";
+      valid = false;
+    } else if (qty > stock) {
+      warning.textContent = `⚠️ สินค้าเหลือ ${stock} ชิ้น`;
+      valid = false;
+    } else if (selectedProducts.has(product)) {
+      warning.textContent = "⚠️ ห้ามเลือกสินค้าซ้ำ";
+      valid = false;
+    } else {
+      warning.textContent = "";
+      selectedProducts.add(product);
+      formData.append("products[]", product);
+      formData.append("quantities[]", qty);
+    }
+  });
+
+  if (!valid) {
+    responseBox.innerText = "⚠️ กรุณาแก้ไขรายการอาหารก่อนสั่งซื้อ";
+    submitBtn.disabled = false;
+    return;
+  }
+
+  if (paymentMethod !== "เก็บเงินปลายทาง" && !slipFile) {
+    responseBox.innerText = "⚠️ กรุณาแนบสลิปหลังชำระเงิน";
+    submitBtn.disabled = false;
+    return;
+  }
+
+  if (slipFile) formData.append("slipImage", slipFile);
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: formData,
+    });
+
+    const json = await res.json();
+    console.log("✅ ตอบกลับจาก server:", json);
+
+    if (json.status === "success") {
+      sessionStorage.setItem("orderData", JSON.stringify(json));
+      window.location.href = SCRIPT_URL + `?page=success&orderId=${json.orderId}&total=${json.total}&name=${encodeURIComponent(name)}`;
+    } else {
+      responseBox.innerText = `❌ ${json.message || "ไม่สามารถดำเนินการได้"}`;
+    }
+
+  } catch (err) {
+    console.error("🚨 ERROR:", err);
+    responseBox.innerText = "❌ เกิดข้อผิดพลาดขณะส่งคำสั่งซื้อ";
+  }
+
+  submitBtn.disabled = false;
+}
+
+// ✅ โหลดข้อมูลเมื่อหน้าโหลดเสร็จ
+window.addEventListener("DOMContentLoaded", () => {
+  loadProducts();
+  initLiff();
+  setInterval(loadProducts, 5000);
+});
+</script>
+
+</body>
+</html>

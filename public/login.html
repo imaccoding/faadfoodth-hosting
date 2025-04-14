@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>กำลังเข้าสู่ระบบ...</title>
+  <style>
+    body {
+      background: #f1f8e9;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 60px 20px;
+      color: #33691e;
+    }
+
+    .loading-box {
+      max-width: 400px;
+      margin: auto;
+      padding: 30px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .spinner {
+      border: 6px solid #c5e1a5;
+      border-top: 6px solid #558b2f;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      color: #e53935;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-box">
+    <h2>⏳ กำลังเข้าสู่ระบบ...</h2>
+    <div class="spinner"></div>
+    <div id="message"></div>
+  </div>
+
+  <!-- ✅ ใส่ JavaScript ใน <script> -->
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get("userId");
+    const redirectPage = "admin"; // หรือ dashboard, history
+
+    if (userId) {
+      sessionStorage.setItem("userId", userId);
+      document.getElementById("message").innerText = "กำลังพาไปยังหน้าจัดการออเดอร์...";
+      setTimeout(() => {
+        window.location.href = `${redirectPage}.html`;
+      }, 1000);
+    } else {
+      document.getElementById("message").innerHTML = `<div class="error">❌ ไม่พบรหัสผู้ใช้งาน กรุณาเข้าผ่านลิงก์จาก LINE</div>`;
+    }
+  </script>
+</body>
+</html>

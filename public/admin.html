@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>หน้าจัดการออเดอร์</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f1f8e9;
+      margin: 0;
+      padding: 20px;
+      color: #33691e;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #searchInput {
+      width: 100%;
+      max-width: 700px;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #c5e1a5;
+      margin: 0 auto 20px;
+      display: block;
+    }
+    .orderCard {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 10px auto;
+      max-width: 800px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-left: 6px solid #aed581;
+      transition: transform 0.2s;
+    }
+    .orderCard:hover {
+      transform: scale(1.01);
+    }
+    .timestamp {
+      color: #999;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .btn-approve, .btn-delete {
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-approve {
+      background-color: #558b2f;
+      color: white;
+      margin-top: 10px;
+    }
+    .btn-delete {
+      background-color: #e53935;
+      color: white;
+    }
+    .btn-approve:hover { background-color: #33691e; }
+    .btn-delete:hover { background-color: #c62828; }
+    #statusMessage {
+      text-align: center;
+      color: #388e3c;
+      font-weight: bold;
+      margin-top: 30px;
+    }
+    #noMatch {
+      text-align: center;
+      color: #999;
+      display: none;
+      margin-top: 20px;
+    }
+    @media screen and (max-width: 600px) {
+      .orderCard {
+        padding: 15px;
+        font-size: 15px;
+      }
+      .btn-approve, .btn-delete {
+        font-size: 13px;
+        width: 100%;
+        margin-bottom: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>📋 รายการออเดอร์ที่รอตรวจสอบ</h2>
+  <input type="text" id="searchInput" placeholder="🔍 ค้นหาจากชื่อ, เบอร์, ออเดอร์...">
+  <div id="adminLoading" class="loading-message">⏳ กำลังโหลด...</div>
+  <div id="ordersContainer"></div>
+  <div id="noMatch">ไม่พบออเดอร์ที่ตรงกับคำค้นหา</div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcLvACn9OWvdTRmukM4vzfLUEBGZ4Nn0bCV9zTgtAHE4g-20W541aHmbJwHpn0uddD/exec";
+
+    async function loadOrders() {
+      const loading = document.getElementById("adminLoading");
+      const ordersContainer = document.getElementById("ordersContainer");
+      loading.style.display = "block";
+      ordersContainer.innerHTML = "";
+
+      try {
+        const res = await fetch(`${SCRIPT_URL}?get=orders`);
+        const data = await res.json();
+
+        loading.style.display = "none";
+
+        if (!data || data.length === 0) {
+          ordersContainer.innerHTML = `<div id="statusMessage">✅ ออเดอร์ทั้งหมดได้รับการอนุมัติแล้วค่ะ</div>`;
+          return;
+        }
+
+        data.sort((a, b) => {
+  const parseDate = str => {
+    const [datePart, timePart = "00:00:00"] = str.split(" ");
+    const [d, m, y] = datePart.split("/");
+    return new Date(`${y}-${m}-${d}T${timePart}`);
+  };
+  return parseDate(b.timestamp) - parseDate(a.timestamp);
+});
+
+
+        data.forEach(order => {
+          const card = document.createElement("div");
+          card.className = "orderCard";
+          card.innerHTML = `
+            <div class="timestamp">🕒 ${order.timestamp}</div>
+            <div><strong>เลขที่:</strong> ${order.orderId}</div>
+            <div><strong>ชื่อ:</strong> ${order.name}</div>
+            <div><strong>โทร:</strong> ${order.phone}</div>
+            <div><strong>ที่อยู่:</strong> ${order.address}</div>
+            <div><strong>สินค้า:</strong> ${order.items}</div>
+            <div><strong>จำนวนรวม:</strong> ${order.quantity}</div>
+            <div><strong>ยอดรวม:</strong> ${order.total} บาท</div>
+            <div><strong>ช่องทางชำระเงิน:</strong> ${order.paymentMethod}</div>
+            <div><strong>สลิป:</strong> <a href="${order.slipUrl}" target="_blank">ดูสลิป</a></div>
+            <div><strong>ใบเสร็จ:</strong> <a href="${order.receiptUrl}" target="_blank">PDF</a></div>
+            <div><strong>เลขติดตาม:</strong> ${order.tracking || '-'}</div>
+            <div style="margin-top:10px;">
+              <button class="btn-approve" onclick="approveOrder('${order.orderId}', this)">✅ อนุมัติ</button>
+              <button class="btn-delete" onclick="deleteOrder('${order.index}')">✖ ยกเลิก</button>
+            </div>
+          `;
+          ordersContainer.appendChild(card);
+        });
+
+        addSearchFunction();
+      } catch (err) {
+        console.error(err);
+        loading.innerHTML = "❌ ไม่สามารถโหลดข้อมูลได้";
+      }
+    }
+
+    async function approveOrder(orderId, btn) {
+      btn.innerText = "⏳ กำลังอนุมัติ...";
+      btn.disabled = true;
+
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: new URLSearchParams({ action: "approve", orderId })
+      });
+      const json = await res.json();
+
+      if (json.status === "success") {
+        btn.closest(".orderCard").remove();
+        checkEmpty();
+      } else {
+        alert("❌ ไม่สามารถอนุมัติออเดอร์ได้");
+        btn.disabled = false;
+        btn.innerText = "✅ อนุมัติ";
+      }
+    }
+
+    async function deleteOrder(index) {
+      const reason = prompt("📌 กรุณากรอกเหตุผลที่ต้องการยกเลิกออเดอร์นี้:");
+      if (!reason) return;
+
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: new URLSearchParams({ action: "delete", index, reason })
+      });
+
+      const json = await res.json();
+      if (json.status === "deleted") {
+        loadOrders();
+      } else {
+        alert("❌ ยกเลิกไม่สำเร็จ");
+      }
+    }
+
+    function checkEmpty() {
+      const remaining = document.querySelectorAll(".orderCard").length;
+      if (remaining === 0) {
+        document.getElementById("ordersContainer").innerHTML = `<div id="statusMessage">✅ ออเดอร์ทั้งหมดได้รับการอนุมัติแล้วค่ะ</div>`;
+      }
+    }
+
+    function addSearchFunction() {
+      const input = document.getElementById("searchInput");
+      const noMatch = document.getElementById("noMatch");
+
+      input.addEventListener("input", () => {
+        const keyword = input.value.toLowerCase();
+        let found = false;
+
+        document.querySelectorAll(".orderCard").forEach(card => {
+          const text = card.innerText.toLowerCase();
+          if (text.includes(keyword)) {
+            card.style.display = "block";
+            found = true;
+          } else {
+            card.style.display = "none";
+          }
+        });
+
+        noMatch.style.display = found ? "none" : "block";
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", loadOrders);
+  </script>
+</body>
+</html>

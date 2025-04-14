@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>กำลังเช็คสถานะ...</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f1f8e9;
+      text-align: center;
+      padding: 50px;
+      color: #33691e;
+    }
+    .spinner {
+      border: 6px solid #c5e1a5;
+      border-top: 6px solid #558b2f;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error {
+      color: #e53935;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>🚚 กำลังตรวจสอบสถานะพัสดุ...</h2>
+  <div class="spinner"></div>
+  <div id="result"></div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+  let userId = "";
+
+  async function initLiff() {
+    await liff.init({ liffId: "2007253307-JMxPKL5Z" });
+    if (!liff.isLoggedIn()) {
+      liff.login();
+    } else {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+    }
+  }
+
+  async function submitOrder() {
+    const formData = new URLSearchParams();
+    formData.append("name", document.getElementById("name").value);
+    formData.append("phone", document.getElementById("phone").value);
+    formData.append("address", document.getElementById("address").value);
+    formData.append("paymentMethod", document.querySelector("input[name=payment]:checked").value);
+    formData.append("userId", userId); // ✅ ส่ง userId ไปกับคำสั่งซื้อ
+
+    // เพิ่มสินค้าและจำนวน
+    formData.append("products[]", document.getElementById("product").value);
+    formData.append("quantities[]", document.getElementById("qty").value);
+
+    try {
+      const res = await fetch("https://script.google.com/macros/s/AKfycbxcLvACn9OWvdTRmukM4vzfLUEBGZ4Nn0bCV9zTgtAHE4g-20W541aHmbJwHpn0uddD/exec", {
+        method: "POST",
+        body: formData
+      });
+      const result = await res.json();
+      if (result.status === "success") {
+        alert("✅ ส่งคำสั่งซื้อสำเร็จ!");
+      } else {
+        alert("❌ ส่งคำสั่งซื้อไม่สำเร็จ");
+      }
+    } catch (err) {
+      alert("⚠️ เกิดข้อผิดพลาด");
+    }
+  }
+
+  window.onload = initLiff;
+</script>
+</body>
+</html>

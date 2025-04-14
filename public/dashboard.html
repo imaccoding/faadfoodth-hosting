@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สรุปยอดขาย</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f9fae6;
+      margin: 0;
+      padding: 20px;
+      color: #33691e;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .summary-box {
+      max-width: 900px;
+      margin: auto;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      margin-bottom: 30px;
+    }
+    .summary-item {
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+    .chart-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      padding: 20px;
+      margin: 20px auto;
+      max-width: 900px;
+    }
+    .chart-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+      color: #2e7d32;
+    }
+    canvas {
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h2>🌟 สรุปยอดขาย</h2>
+
+  <div class="summary-box" id="dashboardData">
+    <div class="loading-message">⏳ กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">📈 ยอดขายรายวัน</div>
+    <canvas id="dailyChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">📅 ยอดขายรายเดือน</div>
+    <canvas id="monthlyChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">🏆 สินค้าขายดี</div>
+    <canvas id="topProductsChart"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+async function loadDashboard() {
+  const box = document.getElementById("dashboardData");
+  box.innerHTML = `<div class="loading-message">⏳ กำลังโหลดข้อมูล...</div>`;
+
+  try {
+    const res = await fetch("https://script.google.com/macros/s/AKfycbwmnAy3O20xIKtj-Zd7DSPndTw5nS78HunQnWEy813jbPUu0NDdanjmyx8oUbesHMka/exec?get=dashboard");
+    const data = await res.json();
+
+    if (!data || Object.keys(data).length === 0) {
+      box.innerHTML = "<p>ไม่พบข้อมูล</p>";
+      return;
+    }
+
+    const lastUpdate = new Date().toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+
+    box.innerHTML = `
+      <div class="summary-item">📅 วันที่อัปเดตล่าสุด: <strong>${lastUpdate}</strong></div>
+      <div class="summary-item">💰 ยอดขายวันนี้: <strong>${data.todayTotal || 0} บาท</strong></div>
+      <div class="summary-item">📦 ออเดอร์วันนี้: <strong>${data.todayOrders || 0} รายการ</strong></div>
+      <div class="summary-item">📈 ยอดขายเดือนนี้: <strong>${data.monthTotal || 0} บาท</strong></div>
+      <div class="summary-item">🧾 รายการเดือนนี้: <strong>${data.monthOrders || 0} รายการ</strong></div>
+    `;
+
+    new Chart(document.getElementById("dailyChart"), {
+      type: "line",
+      data: {
+        labels: data.daily.labels,
+        datasets: [{
+          label: "ยอดขายรายวัน (บาท)",
+          data: data.daily.values,
+          backgroundColor: "rgba(76, 175, 80, 0.2)",
+          borderColor: "#2e7d32",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: "#2e7d32"
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    new Chart(document.getElementById("monthlyChart"), {
+      type: "line",
+      data: {
+        labels: data.monthly.labels,
+        datasets: [{
+          label: "ยอดขายรายเดือน (บาท)",
+          data: data.monthly.values,
+          backgroundColor: "rgba(2, 136, 209, 0.2)",
+          borderColor: "#0288d1",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: "#0288d1"
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    const productLabels = data.products.labels.map((label, i) => {
+      if (i === 0) return "🥇 " + label;
+      if (i === 1) return "🥈 " + label;
+      if (i === 2) return "🥉 " + label;
+      return label;
+    });
+
+    new Chart(document.getElementById("topProductsChart"), {
+      type: "bar",
+      data: {
+        labels: productLabels,
+        datasets: [{
+          label: "จำนวนที่ขายได้ (ชิ้น)",
+          data: data.products.values.map(v => Math.round(v)),
+        
+// เปลี่ยนสีกราฟแท่งแนวนอน
+ backgroundColor: data.products.labels.map((_, i) =>
+  i === 0 ? "#FF9B17"     
+  : i === 1 ? "#FCB454"   
+  : i === 2 ? "#FFF085"   
+  : "#F4F6FF"          
+),
+
+          borderColor: "#2e7d32",
+          borderWidth: 1,
+          borderRadius: 10
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: {
+              callback: value => Math.round(value),
+              color: "#444",
+              maxTicksLimit: 6
+            },
+            grid: { color: "#eee" }
+          },
+          y: {
+            ticks: { color: "#444" },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => `${Math.round(ctx.parsed.x)} ชิ้น`
+            }
+          }
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    box.innerHTML = "<p class='error'>❌ โหลดข้อมูลไม่สำเร็จ</p>";
+  }
+}
+
+window.addEventListener("DOMContentLoaded", loadDashboard);
+  </script>
+</body>
+</html>
