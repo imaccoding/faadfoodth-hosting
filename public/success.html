@@ -27,6 +27,11 @@
     p {
       font-size: 18px;
     }
+    #orderInfo {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #2e7d32;
+    }
     .btn {
       margin-top: 30px;
       padding: 10px 20px;
@@ -49,7 +54,25 @@
     <h2>✅ สั่งซื้อสำเร็จ!</h2>
     <p>ระบบได้รับคำสั่งซื้อของคุณแล้ว</p>
     <p>กรุณารอการติดต่อกลับจากเจ้าหน้าที่</p>
+    <div id="orderInfo"></div>
     <a href="form.html" class="btn">🛒 กลับไปหน้าเลือกสินค้า</a>
   </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("orderId");
+    const name = params.get("name");
+    const total = params.get("total");
+
+    const infoBox = document.getElementById("orderInfo");
+    if (orderId && name && total) {
+      infoBox.innerHTML = `
+        <hr>
+        <p><strong>เลขที่ออเดอร์:</strong> ${orderId}</p>
+        <p><strong>ชื่อผู้สั่ง:</strong> ${decodeURIComponent(name)}</p>
+        <p><strong>ยอดรวม:</strong> ${total} บาท</p>
+      `;
+    }
+  </script>
 </body>
 </html>

@@ -39,47 +39,37 @@
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-  let userId = "";
+  const API_URL = "https://script.google.com/macros/s/AKfycbxcLvACn9OWvdTRmukM4vzfLUEBGZ4Nn0bCV9zTgtAHE4g-20W541aHmbJwHpn0uddD/exec";
 
-  async function initLiff() {
-    await liff.init({ liffId: "2007253307-JMxPKL5Z" });
-    if (!liff.isLoggedIn()) {
-      liff.login();
-    } else {
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-    }
-  }
-
-  async function submitOrder() {
-    const formData = new URLSearchParams();
-    formData.append("name", document.getElementById("name").value);
-    formData.append("phone", document.getElementById("phone").value);
-    formData.append("address", document.getElementById("address").value);
-    formData.append("paymentMethod", document.querySelector("input[name=payment]:checked").value);
-    formData.append("userId", userId); // ✅ ส่ง userId ไปกับคำสั่งซื้อ
-
-    // เพิ่มสินค้าและจำนวน
-    formData.append("products[]", document.getElementById("product").value);
-    formData.append("quantities[]", document.getElementById("qty").value);
-
+  async function init() {
     try {
-      const res = await fetch("https://script.google.com/macros/s/AKfycbxcLvACn9OWvdTRmukM4vzfLUEBGZ4Nn0bCV9zTgtAHE4g-20W541aHmbJwHpn0uddD/exec", {
-        method: "POST",
-        body: formData
-      });
-      const result = await res.json();
-      if (result.status === "success") {
-        alert("✅ ส่งคำสั่งซื้อสำเร็จ!");
+      await liff.init({ liffId: "2007253307-JMxPKL5Z" });
+      if (!liff.isLoggedIn()) {
+        liff.login();
       } else {
-        alert("❌ ส่งคำสั่งซื้อไม่สำเร็จ");
+        const profile = await liff.getProfile();
+        const userId = profile.userId;
+
+        // ดึงสถานะล่าสุดของ userId จาก GAS
+        const res = await fetch(`${API_URL}?uid=${userId}`);
+        const data = await res.json();
+
+        if (data.status === "success" && data.trackingLink) {
+          window.location.href = data.trackingLink;
+        } else if (data.status === "cancelled") {
+          document.getElementById("result").innerText = "❌ ออเดอร์ของคุณถูกยกเลิก กรุณาติดต่อแอดมิน";
+        } else if (data.status === "pending") {
+          document.getElementById("result").innerText = "⏳ ออเดอร์ของคุณยังไม่ได้รับการอนุมัติ";
+        } else {
+          document.getElementById("result").innerText = "⏳ ยังไม่มีข้อมูลการจัดส่ง กรุณาตรวจสอบอีกครั้ง";
+        }
       }
     } catch (err) {
-      alert("⚠️ เกิดข้อผิดพลาด");
+      document.getElementById("result").innerText = "⚠️ เกิดข้อผิดพลาด ไม่สามารถโหลดข้อมูลได้";
     }
   }
 
-  window.onload = initLiff;
+  window.onload = init;
 </script>
 </body>
 </html>
