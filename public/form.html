@@ -43,6 +43,7 @@
     #paymentDetails {
       background: #ffe0b2; padding: 15px;
       margin-top: 10px; border-radius: 10px;
+      display: none;
     }
   </style>
 </head>
@@ -64,7 +65,7 @@
     <input type="text" id="total" readonly>
 
     <label>ช่องทางชำระเงิน</label>
-    <select id="paymentMethod" onchange="showPaymentDetails()" required>
+    <select id="paymentMethod" required>
       <option value="">-- เลือกช่องทาง --</option>
       <option value="โอนบัญชีกสิกร">โอนบัญชีกสิกร</option>
       <option value="โอนบัญชีกรุงเทพ">โอนบัญชีกรุงเทพ</option>
@@ -83,7 +84,7 @@
   <div id="response"></div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcLvACn9OWvdTRmukM4vzfLUEBGZ4Nn0bCV9zTgtAHE4g-20W541aHmbJwHpn0uddD/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmnAy3O20xIKtj-Zd7DSPndTw5nS78HunQnWEy813jbPUu0NDdanjmyx8oUbesHMka/exec";
 let productList = [], userId = "";
 
 async function initLiff() {
@@ -101,6 +102,7 @@ async function loadProducts() {
     const res = await fetch(SCRIPT_URL + "?get=products");
     productList = await res.json();
     updateAllSelects();
+    updatePrice();
   } catch (err) {
     document.getElementById("response").innerText = "❌ โหลดสินค้าไม่สำเร็จ";
   }
@@ -164,9 +166,11 @@ function showPaymentDetails() {
     case "พร้อมเพย์": html = "<b>พร้อมเพย์</b><br>เลขพร้อมเพย์: 0812345678 <br>ชื่อบัญชี: นางน้ำพริก รสเด็ด<br><img src='https://i.imgur.com/YOUR_QR_IMAGE.png' width='150'>"; break;
     case "เก็บเงินปลายทาง": html = "<b>เก็บเงินปลายทาง</b> <br>เจ้าหน้าที่จะจัดส่งและเก็บเงินหน้างาน"; break;
   }
-  if (method && method !== "เก็บเงินปลายทาง") html += "<p style='color:#e65100'><strong>📌 กรุณาแนบสลิปหลังชำระเงิน</strong></p>";
+  if (method && method !== "เก็บเงินปลายทาง") {
+    html += "<p style='color:#e65100'><strong>📌 กรุณาแนบสลิปหลังชำระเงิน</strong></p>";
+  }
   box.innerHTML = html;
-  box.style.display = html ? "block" : "none";
+  box.style.display = "block";
 }
 
 async function submitForm() {
@@ -175,7 +179,9 @@ async function submitForm() {
   submitBtn.disabled = true;
   responseBox.innerText = "⏳ กำลังส่งคำสั่งซื้อ...";
 
-  const name = nameInput.value.trim(), phone = phoneInput.value.trim(), address = addressInput.value.trim();
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const address = document.getElementById("address").value.trim();
   const paymentMethod = document.getElementById("paymentMethod").value;
   const slipFile = document.getElementById("slipImage").files[0];
 
@@ -186,7 +192,8 @@ async function submitForm() {
   }
   if (!/^0[689]\d{8}$/.test(phone)) {
     responseBox.innerText = "⚠️ กรุณากรอกเบอร์โทรให้ถูกต้อง";
-    submitBtn.disabled = false; return;
+    submitBtn.disabled = false;
+    return;
   }
 
   const formData = new FormData();
@@ -199,7 +206,8 @@ async function submitForm() {
   const productRows = document.querySelectorAll(".productRow");
   if (productRows.length === 0) {
     responseBox.innerText = "⚠️ กรุณาเพิ่มรายการอาหาร";
-    submitBtn.disabled = false; return;
+    submitBtn.disabled = false;
+    return;
   }
 
   let valid = true, selectedProducts = new Set();
@@ -238,7 +246,7 @@ async function submitForm() {
     const json = await res.json();
     if (json.status === "success") {
       sessionStorage.setItem("orderData", JSON.stringify(json));
-      window.location.href = SCRIPT_URL + `?page=success&orderId=${json.orderId}&total=${json.total}&name=${encodeURIComponent(name)}`;
+      window.location.href = `success.html?orderId=${json.orderId}&total=${json.total}&name=${encodeURIComponent(name)}`;
     } else {
       responseBox.innerText = `❌ ${json.message || "ไม่สามารถดำเนินการได้"}`;
     }
@@ -252,7 +260,7 @@ async function submitForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initLiff();
   loadProducts();
-  setInterval(loadProducts, 30000);
+  document.getElementById("paymentMethod").addEventListener("change", showPaymentDetails);
 });
 </script>
 </body>
